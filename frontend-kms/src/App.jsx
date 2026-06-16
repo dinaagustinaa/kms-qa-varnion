@@ -9,7 +9,7 @@ import KnowledgeBase from './components/KnowledgeBase';
 import Settings from './components/Settings';
 
 // Layout Dashboard Utama
-function DashboardLayout({ user, onLogout, children }) {
+function DashboardLayout({ user, onLogout, platforms = [], notes = [], children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
@@ -106,7 +106,7 @@ function DashboardLayout({ user, onLogout, children }) {
         </main>
       </div>
 
-      <Chatbot user={user} />
+      <Chatbot user={user} platforms={platforms} notes={notes} />
     </div>
   );
 }
@@ -227,7 +227,7 @@ export default function App() {
         {/* Halaman Dashboard */}
         <Route path="/dashboard" element={
           user ? (
-            <DashboardLayout user={user} onLogout={handleLogout}>
+            <DashboardLayout user={user} onLogout={handleLogout} platforms={platforms} notes={notes}>
               <PlatformGrid role={user.role} platforms={platforms} onAddPlatform={handleAddPlatform} fetchData={fetchData} />
               <NotesBoard role={user.role} notes={notes} onAddNote={handleAddNote} fetchData={fetchData} />
             </DashboardLayout>
@@ -242,6 +242,7 @@ export default function App() {
             <KnowledgeBaseWrapper 
               user={user} 
               onLogout={handleLogout} 
+              platforms={platforms}
               notes={notes} 
             />
           ) : (
@@ -255,6 +256,8 @@ export default function App() {
             <SettingsWrapper 
               user={user} 
               onLogout={handleLogout} 
+              platforms={platforms}
+              notes={notes}
             />
           ) : (
             <Navigate to="/" replace />
@@ -282,19 +285,19 @@ function LoginGatewayWrapper({ username, setUsername, password, setPassword, err
 }
 
 // Wrapper Helper Halaman Knowledge Base
-function KnowledgeBaseWrapper({ user, onLogout, notes }) {
+function KnowledgeBaseWrapper({ user, onLogout, platforms, notes }) {
   const navigate = useNavigate();
   return (
-    <DashboardLayout user={user} onLogout={onLogout}>
+    <DashboardLayout user={user} onLogout={onLogout} platforms={platforms} notes={notes}>
       <KnowledgeBase notes={notes} onBackToDashboard={() => navigate('/dashboard')} />
     </DashboardLayout>
   );
 }
 
 // Wrapper Helper Halaman Settings
-function SettingsWrapper({ user, onLogout }) {
+function SettingsWrapper({ user, onLogout, platforms, notes }) {
   return (
-    <DashboardLayout user={user} onLogout={onLogout}>
+    <DashboardLayout user={user} onLogout={onLogout} platforms={platforms} notes={notes}>
       <Settings user={user} />
     </DashboardLayout>
   );
