@@ -20,6 +20,39 @@ db.connect((err) => {
         return;
     }
     console.log('Koneksi database MySQL aktif');
+
+    // Inisialisasi tabel knowledge_base
+    db.query(`
+        CREATE TABLE IF NOT EXISTS knowledge_base (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            content TEXT NOT NULL,
+            category VARCHAR(50) NOT NULL,
+            product VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    `, (err) => {
+        if (err) {
+            console.error('Gagal inisialisasi tabel knowledge_base:', err);
+        } else {
+            console.log('Tabel knowledge_base aktif');
+            // Seeding data awal jika kosong
+            db.query('SELECT COUNT(*) AS count FROM knowledge_base', (err, results) => {
+                if (!err && results[0].count === 0) {
+                    const seedData = [
+                        ['Alur Integrasi Paket Internet Megalos', '1. Registrasi pelanggan baru via admin portal.\n2. Verifikasi status OLT dan ONT pada ONT Manager.\n3. Aktivasi paket dan binding profile PPPoE di Mikrotik.\n4. Konfirmasi billing Megalos ter-update dengan flag active.', 'Business Rules', 'Megalos'],
+                        ['Skenario Pengujian Invoice Nexbill', 'Test Scenario: Validasi invoice bulanan pelanggan corporate.\nTest Case:\n- Verify nominal PPN 11% terhitung otomatis.\n- Verify invoice terbit H-7 sebelum jatuh tempo.\n- Verify status invoice menjadi Paid setelah webhook payment gateway sukses.', 'QA Documentation', 'Nexbill'],
+                        ['Preconditions Pengujian Nextune Player', 'Preconditions:\n1. Browser chrome versi 120+.\n2. Bandwidth minimal 5 Mbps.\n3. Akun penguji memiliki lisensi Nextune Premium.', 'QA Documentation', 'Nextune']
+                    ];
+                    db.query('INSERT INTO knowledge_base (title, content, category, product) VALUES ?', [seedData], (err) => {
+                        if (err) console.error('Gagal seeding data knowledge_base:', err);
+                        else console.log('Seeding data awal knowledge_base berhasil');
+                    });
+                }
+            });
+        }
+    });
 });
 
 // Middleware verifikasi role admin
@@ -172,20 +205,119 @@ app.put('/api/kanban/:id', verifikasiAdmin, (req, res) => {
     );
 });
 
-// API Asisten Virtual
+// --- KNOWLEDGE BASE API ---
+
+// Ambil semua dokumen KB
+app.get('/api/knowledge', (req, res) => {
+    db.query('SELECT * FROM knowledge_base ORDER BY created_at DESC', (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+// Tambah dokumen KB baru
+app.post('/api/knowledge', verifikasiAdmin, (req, res) => {
+    const { title, content, category, product } = req.body;
+    db.query(
+        'INSERT INTO knowledge_base (title, content, category, product) VALUES (?, ?, ?, ?)',
+        [title, content, category, product],
+        (err, result) => {
+            if (err) return res.status(500).json(err);
+            res.json({ success: true, message: 'Dokumen berhasil disimpan.', id: result.insertId });
+        }
+    );
+});
+
+// Update dokumen KB
+app.put('/api/knowledge/:id', verifikasiAdmin, (req, res) => {
+    const { id } = req.params;
+    const { title, content, category, product } = req.body;
+    db.query(
+        'UPDATE knowledge_base SET title = ?, content = ?, category = ?, product = ? WHERE id = ?',
+        [title, content, category, product, id],
+        (err, result) => {
+            if (err) return res.status(500).json(err);
+            res.json({ success: true, message: 'Dokumen berhasil diperbarui.' });
+        }
+    );
+});
+
+// Hapus dokumen KB
+app.delete('/api/knowledge/:id', verifikasiAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query('DELETE FROM knowledge_base WHERE id = ?', [id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ success: true, message: 'Dokumen berhasil dihapus.' });
+    });
+});
+
+// API Asisten Virtual dengan Integrasi Knowledge Base
 app.get('/api/chat/:nodeId', (req, res) => {
     const { nodeId } = req.params;
-    db.query('SELECT * FROM chat_nodes WHERE node_id = ?', [nodeId], (err, results) => {
-        if (err) return res.status(500).json(err);
-        if (results.length > 0) {
+    
+    if (nodeId === 'kb_main') {
+        db.query('SELECT DISTINCT product FROM knowledge_base', (err, results) => {
+            if (err) return res.status(500).json(err);
+            const options = results.map(row => ({
+                text: `Panduan ${row.product}`,
+                next: `kb_product_${row.product}`
+            }));
+            options.push({ text: 'Kembali ke Menu Utama', next: 'start' });
             res.json({
-                text: results[0].bot_text,
-                options: JSON.parse(results[0].options_json)
+                text: 'Silakan pilih produk yang ingin Anda cari dokumen panduannya:',
+                options: options
             });
-        } else {
-            res.status(404).json({ message: 'Rute panduan tidak ditemukan.' });
-        }
-    });
+        });
+    } else if (nodeId.startsWith('kb_product_')) {
+        const product = nodeId.replace('kb_product_', '');
+        db.query('SELECT id, title FROM knowledge_base WHERE product = ?', [product], (err, results) => {
+            if (err) return res.status(500).json(err);
+            const options = results.map(row => ({
+                text: row.title,
+                next: `kb_doc_${row.id}`
+            }));
+            options.push({ text: 'Kembali ke Produk', next: 'kb_main' });
+            res.json({
+                text: `Berikut adalah daftar dokumen panduan untuk ${product}:`,
+                options: options
+            });
+        });
+    } else if (nodeId.startsWith('kb_doc_')) {
+        const docId = nodeId.replace('kb_doc_', '');
+        db.query('SELECT title, content, product FROM knowledge_base WHERE id = ?', [docId], (err, results) => {
+            if (err) return res.status(500).json(err);
+            if (results.length > 0) {
+                res.json({
+                    text: `[${results[0].title}]\n\n${results[0].content}`,
+                    options: [
+                        { text: 'Kembali ke Daftar', next: `kb_product_${results[0].product}` },
+                        { text: 'Kembali ke Menu Utama', next: 'start' }
+                    ]
+                });
+            } else {
+                res.status(404).json({ message: 'Dokumen tidak ditemukan.' });
+            }
+        });
+    } else {
+        db.query('SELECT * FROM chat_nodes WHERE node_id = ?', [nodeId], (err, results) => {
+            if (err) return res.status(500).json(err);
+            if (results.length > 0) {
+                let options = JSON.parse(results[0].options_json);
+                if (nodeId === 'start') {
+                    const hasKb = options.some(opt => opt.next === 'kb_main');
+                    if (!hasKb) {
+                        options = [...options, { text: 'Cari di Knowledge Base', next: 'kb_main' }];
+                    }
+                }
+                res.json({
+                    text: results[0].bot_text,
+                    options: options
+                });
+            } else {
+                res.status(404).json({ message: 'Rute panduan tidak ditemukan.' });
+            }
+        });
+    }
 });
 
 // Server listener

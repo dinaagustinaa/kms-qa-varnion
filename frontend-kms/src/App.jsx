@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layers, LogOut, LayoutDashboard, Settings, FolderKey } from 'lucide-react';
 import LoginCard from './components/LoginCard';
 import PlatformGrid from './components/PlatformGrid';
 import NotesBoard from './components/NotesBoard';
 import Chatbot from './components/Chatbot';
+import KnowledgeBase from './components/KnowledgeBase';
 
 // Layout Dashboard Utama
-function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAddNote, fetchData }) {
+function DashboardLayout({ user, onLogout, children }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentPath = location.pathname;
+
   return (
     <div className="min-h-screen bg-[#070b12] flex font-sans">
       
@@ -27,10 +32,16 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
 
           {/* Menu Navigasi */}
           <nav className="space-y-1">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-cyan-600/10 text-cyan-400 border border-cyan-500/10 text-left">
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer ${currentPath === '/dashboard' ? 'bg-cyan-600/10 text-cyan-400 border border-cyan-500/10' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}
+            >
               <LayoutDashboard size={16} /> <span>Dashboard</span>
             </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition-colors text-left cursor-not-allowed opacity-40">
+            <button 
+              onClick={() => navigate('/knowledge')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer ${currentPath === '/knowledge' ? 'bg-cyan-600/10 text-cyan-400 border border-cyan-500/10' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}
+            >
               <FolderKey size={16} /> <span>Knowledge Base</span>
             </button>
             <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-900 hover:text-slate-200 transition-colors text-left cursor-not-allowed opacity-40">
@@ -61,16 +72,17 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <header className="px-8 py-4 bg-[#070b12]/40 backdrop-blur-md border-b border-slate-900 flex justify-between items-center sticky top-0 z-30">
-          <div className="text-xs text-slate-500 font-mono">QA Operations / <span className="text-slate-300">Dashboard</span></div>
+          <div className="text-xs text-slate-500 font-mono">
+            QA Operations / <span className="text-slate-300 capitalize">{currentPath === '/dashboard' ? 'Dashboard' : 'Knowledge Base'}</span>
+          </div>
           <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-full">
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> System Live - Synced
           </div>
         </header>
 
-        {/* Dashboard Grid */}
+        {/* Dashboard / Knowledge Grid */}
         <main className="flex-1 p-8 space-y-12 max-w-6xl w-full mx-auto">
-          <PlatformGrid role={user.role} platforms={platforms} onAddPlatform={onAddPlatform} fetchData={fetchData} />
-          <NotesBoard role={user.role} notes={notes} onAddNote={onAddNote} fetchData={fetchData} />
+          {children}
         </main>
       </div>
 
@@ -92,6 +104,7 @@ export default function App() {
 
   const [platforms, setPlatforms] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [documents, setDocuments] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -100,6 +113,9 @@ export default function App() {
 
       const resNotes = await fetch('http://localhost:5000/api/kanban');
       setNotes(await resNotes.json());
+
+      const resDocs = await fetch('http://localhost:5000/api/knowledge');
+      setDocuments(await resDocs.json());
     } catch (err) {
       console.error("Gagal memuat data dari server:", err);
     }
@@ -132,6 +148,11 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('kms_user_session');
+  };
+
   const handleAddPlatform = async (formData) => {
     await fetch('http://localhost:5000/api/platforms', {
       method: 'POST',
@@ -150,6 +171,32 @@ export default function App() {
     fetchData();
   };
 
+  const handleAddDocument = async (formData) => {
+    await fetch('http://localhost:5000/api/knowledge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'userrole': user.role },
+      body: JSON.stringify(formData)
+    });
+    fetchData();
+  };
+
+  const handleUpdateDocument = async (id, formData) => {
+    await fetch(`http://localhost:5000/api/knowledge/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'userrole': user.role },
+      body: JSON.stringify(formData)
+    });
+    fetchData();
+  };
+
+  const handleDeleteDocument = async (id) => {
+    await fetch(`http://localhost:5000/api/knowledge/${id}`, {
+      method: 'DELETE',
+      headers: { 'userrole': user.role }
+    });
+    fetchData();
+  };
+
   return (
     <Router>
       <Routes>
@@ -161,15 +208,27 @@ export default function App() {
         {/* Halaman Dashboard */}
         <Route path="/dashboard" element={
           user ? (
-            <DashboardLayout 
-              user={user} 
-              onLogout={() => { setUser(null); localStorage.removeItem('kms_user_session'); }} 
-              platforms={platforms} 
-              notes={notes} 
-              onAddPlatform={handleAddPlatform} 
-              onAddNote={handleAddNote} 
-              fetchData={fetchData}
-            />
+            <DashboardLayout user={user} onLogout={handleLogout}>
+              <PlatformGrid role={user.role} platforms={platforms} onAddPlatform={handleAddPlatform} fetchData={fetchData} />
+              <NotesBoard role={user.role} notes={notes} onAddNote={handleAddNote} fetchData={fetchData} />
+            </DashboardLayout>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } />
+
+        {/* Halaman Knowledge Base */}
+        <Route path="/knowledge" element={
+          user ? (
+            <DashboardLayout user={user} onLogout={handleLogout}>
+              <KnowledgeBase 
+                role={user.role} 
+                documents={documents} 
+                onAddDocument={handleAddDocument} 
+                onUpdateDocument={handleUpdateDocument} 
+                onDeleteDocument={handleDeleteDocument} 
+              />
+            </DashboardLayout>
           ) : (
             <Navigate to="/" replace />
           )
