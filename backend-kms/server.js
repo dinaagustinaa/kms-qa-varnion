@@ -54,40 +54,48 @@ db.connect((err) => {
         }
     });
 
-    // Cek dan tambahkan kolom 'name' dan 'email' di tabel users jika belum ada
+    // Cek dan tambahkan kolom 'name' dan 'email' di tabel users jika belum ada di database
     db.query('SHOW COLUMNS FROM users', (err, cols) => {
         if (err) {
             console.error('Gagal mengecek struktur tabel users:', err);
             return;
         }
+        // Mengambil semua nama kolom yang ada di tabel 'users' saat ini
         const fields = cols.map(c => c.Field);
         
         const queries = [];
+        // Jika kolom 'name' belum ada, tambahkan query ALTER TABLE ke antrean
         if (!fields.includes('name')) {
             queries.push("ALTER TABLE users ADD COLUMN name VARCHAR(100) DEFAULT NULL");
         }
+        // Jika kolom 'email' belum ada, tambahkan query ALTER TABLE ke antrean
         if (!fields.includes('email')) {
             queries.push("ALTER TABLE users ADD COLUMN email VARCHAR(100) DEFAULT NULL");
         }
         
+        // Fungsi rekursif untuk mengeksekusi query ALTER TABLE secara berurutan
         const executeQueries = (index) => {
+            // Jika semua query ALTER TABLE selesai dijalankan
             if (index >= queries.length) {
-                // Setelah alter, pastikan data awal diisi jika null
+                // Perbarui data nama dan email untuk user default (admin & user_qa) jika masih kosong/NULL
                 db.query("UPDATE users SET name = 'Admin Varnion', email = 'admin@varnion.com' WHERE username = 'admin_varnion' AND (name IS NULL OR name = '')");
                 db.query("UPDATE users SET name = 'User Varnion', email = 'user@varnion.com' WHERE username = 'user_varnion' AND (name IS NULL OR name = '')");
                 console.log('Inisialisasi kolom tabel users selesai');
                 return;
             }
+            // Jalankan query ALTER TABLE pada indeks saat ini
             db.query(queries[index], (err) => {
                 if (err) {
                     console.error(`Gagal menjalankan query: ${queries[index]}`, err);
                 } else {
                     console.log(`Berhasil menjalankan query: ${queries[index]}`);
                 }
+                // Lanjutkan ke query berikutnya
                 executeQueries(index + 1);
             });
         };
         
+        // Mulai eksekusi query dari indeks 0
         executeQueries(0);
     });
 });
@@ -104,14 +112,16 @@ const verifikasiAdmin = (req, res, next) => {
     next();
 };
 
-// API login
+// API login untuk memproses autentikasi pengguna
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
+    // Ambil data user beserta nama dan email dari database berdasarkan username & password
     db.query(
         'SELECT id, username, name, email, role, created_at FROM users WHERE username = ? AND password = ?', 
         [username, password], 
         (err, results) => {
             if (err) return res.status(500).json(err);
+            // Jika pencarian mengembalikan data (ditemukan user yang cocok)
             if (results.length > 0) {
                 res.json({ success: true, user: results[0] });
             } else {
@@ -121,9 +131,10 @@ app.post('/api/login', (req, res) => {
     );
 });
 
-// Tambah user baru
+// Tambah user baru (Hanya dapat diakses oleh Super Admin / Lead QA)
 app.post('/api/users', verifikasiAdmin, (req, res) => {
     const { username, password, role, name, email } = req.body;
+    // Masukkan data user baru dengan name & email opsional (default ke NULL jika tidak dikirim)
     db.query('INSERT INTO users (username, password, role, name, email) VALUES (?, ?, ?, ?, ?)', 
     [username, password, role, name || null, email || null], (err, result) => {
         if (err) return res.status(500).json(err);
@@ -131,14 +142,15 @@ app.post('/api/users', verifikasiAdmin, (req, res) => {
     });
 });
 
-// Update profile user (name & email)
+// Update profile user (Khusus untuk mengubah name & email mandiri)
 app.put('/api/users/profile/:id', (req, res) => {
     const { id } = req.params;
     const { name, email } = req.body;
+    // Perbarui kolom nama dan email berdasarkan ID pengguna saat ini
     db.query('UPDATE users SET name = ?, email = ? WHERE id = ?', [name, email, id], (err, result) => {
         if (err) return res.status(500).json(err);
         
-        // Ambil data user yang diperbarui
+        // Ambil kembali data user terbaru setelah sukses diperbarui untuk memperbarui sesi di frontend
         db.query('SELECT id, username, name, email, role, created_at FROM users WHERE id = ?', [id], (err, results) => {
             if (err) return res.status(500).json(err);
             if (results.length > 0) {

@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
 import { Layers, Search, Plus, Eye, ExternalLink, Edit2, Trash2, Save, X } from 'lucide-react';
 
+/**
+ * Komponen PlatformGrid
+ * Digunakan untuk menampilkan kartu direktori link staging aplikasi pengujian.
+ * - QA biasa dapat melihat daftar link staging dan detail panduan pelaksanaan pengujian.
+ * - Admin (super_admin) dapat menambahkan, memperbarui (edit), dan menghapus platform.
+ */
 export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData }) {
+  // State untuk pencarian platform berdasarkan nama aplikasi
   const [searchQuery, setSearchQuery] = useState('');
+  // State penampung platform yang sedang aktif dibuka detailnya
   const [selected, setSelected] = useState(null);
+  // State pengontrol pembukaan form modal tambah platform baru
   const [isOpenForm, setIsOpenForm] = useState(false);
+  // State penanda apakah admin sedang melakukan proses pengeditan data di modal
   const [isEditing, setIsEditing] = useState(false);
   
+  // State penampung form pendaftaran platform baru
   const [form, setForm] = useState({ name: '', url: '', status: 'Testing', testing_guide: '' });
+  // State penampung form pengeditan data terpilih
   const [editForm, setEditForm] = useState({ name: '', url: '', status: 'Testing', testing_guide: '' });
 
+  // Saring platform berdasarkan kueri pencarian user (case-insensitive)
   const filtered = platforms.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Menghapus platform
+  // Handler Hapus Platform (Hanya diizinkan bagi Super Admin)
   const handleDelete = async (id) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus platform ini?")) {
       try {
@@ -21,8 +34,8 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
           headers: { 'userrole': role }
         });
         if (res.ok) {
-          setSelected(null);
-          fetchData();
+          setSelected(null); // Tutup modal detail setelah sukses menghapus
+          fetchData(); // Refresh data terupdate dari server
         }
       } catch (err) {
         alert("Gagal menghapus platform.");
@@ -30,7 +43,7 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
     }
   };
 
-  // Memperbarui platform
+  // Handler Perbarui Data Platform (Hanya diizinkan bagi Super Admin)
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -43,9 +56,9 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
         body: JSON.stringify(editForm)
       });
       if (res.ok) {
-        setIsEditing(false);
-        setSelected({ ...selected, ...editForm });
-        fetchData();
+        setIsEditing(false); // Keluar dari mode edit setelah sukses
+        setSelected({ ...selected, ...editForm }); // Perbarui data modal terpilih di frontend
+        fetchData(); // Refresh data terupdate dari server
       }
     } catch (err) {
       alert("Gagal memperbarui platform.");
@@ -54,7 +67,8 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
 
   return (
     <section className="space-y-4">
-      {/* Header */}
+      
+      {/* 1. Header Board Platform */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900 pb-4">
         <div>
           <h2 className="text-lg font-black text-white uppercase flex items-center gap-2 tracking-wide">
@@ -63,34 +77,49 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
           <p className="text-slate-400 text-xs mt-0.5">Klik kartu untuk melihat rincian prasyarat teknis pengujian.</p>
         </div>
 
+        {/* Input Bar Pencarian & Tombol Tambah Platform */}
         <div className="flex items-center gap-3">
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500"><Search size={14} /></span>
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+              <Search size={14} />
+            </span>
             <input 
-              type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              type="text" 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 pr-4 py-1.5 w-60 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
               placeholder="Cari platform..."
             />
           </div>
+          {/* Tampilkan tombol tambah platform khusus untuk Admin */}
           {role === 'super_admin' && (
-            <button onClick={() => setIsOpenForm(true)} className="flex items-center gap-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer">
+            <button 
+              onClick={() => setIsOpenForm(true)} 
+              className="flex items-center gap-1 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-xl cursor-pointer"
+            >
               <Plus size={14} /> <span>Tambah Platform</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Grid Platform */}
+      {/* 2. Grid List Platform */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((plat) => (
           <div key={plat.id} className="glass-card p-5 rounded-2xl flex flex-col justify-between h-44 border border-slate-900">
             <div>
-              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${plat.status === 'Stable' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+              {/* Badge Status Staging (Stable vs Testing) */}
+              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${
+                plat.status === 'Stable' 
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}>
                 {plat.status}
               </span>
               <h3 className="text-sm font-black text-slate-100 mt-3">{plat.name}</h3>
             </div>
 
+            {/* Aksi footer kartu */}
             <div className="mt-5 pt-3 border-t border-slate-900/60 flex items-center justify-between text-[11px]">
               <button 
                 onClick={() => { setSelected(plat); setEditForm(plat); setIsEditing(false); }} 
@@ -99,7 +128,13 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
                 <Eye size={12} /> <span>Detail</span>
               </button>
 
-              <a href={plat.url} target="_blank" rel="noreferrer" className="p-1.5 bg-slate-950 hover:bg-cyan-950/40 border border-slate-850 hover:border-cyan-600/30 text-slate-400 hover:text-cyan-400 rounded-lg transition-all">
+              {/* Tautan eksternal langsung mengarah ke environment URL */}
+              <a 
+                href={plat.url} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="p-1.5 bg-slate-950 hover:bg-cyan-950/40 border border-slate-850 hover:border-cyan-600/30 text-slate-400 hover:text-cyan-400 rounded-lg transition-all"
+              >
                 <ExternalLink size={14} />
               </a>
             </div>
@@ -107,12 +142,12 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
         ))}
       </div>
 
-      {/* Modal Detail Platform */}
+      {/* 3. Modal Detail Platform Terpilih */}
       {selected && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-xl bg-[#0b111e] border border-slate-800 p-6 rounded-2xl space-y-4 shadow-2xl relative">
             
-            {/* Tombol Hapus (Admin saja) */}
+            {/* Tombol Hapus Platform (Hanya Admin) */}
             {role === 'super_admin' && !isEditing && (
               <button 
                 onClick={() => handleDelete(selected.id)}
@@ -123,42 +158,109 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
               </button>
             )}
 
+            {/* Render form edit jika admin menekan tombol edit */}
             {isEditing ? (
-              /* Form Edit */
               <form onSubmit={handleUpdate} className="space-y-4">
                 <h3 className="text-sm font-black text-white uppercase border-b border-slate-850 pb-2">Edit Data Platform</h3>
-                <input type="text" value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500" placeholder="Nama Platform"/>
-                <input type="url" value={editForm.url} onChange={(e) => setEditForm({...editForm, url: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500" placeholder="Link Staging"/>
-                <select value={editForm.status} onChange={(e) => setEditForm({...editForm, status: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500">
+                
+                <input 
+                  type="text" 
+                  value={editForm.name} 
+                  onChange={(e) => setEditForm({...editForm, name: e.target.value})} 
+                  className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500" 
+                  placeholder="Nama Platform"
+                />
+                <input 
+                  type="url" 
+                  value={editForm.url} 
+                  onChange={(e) => setEditForm({...editForm, url: e.target.value})} 
+                  className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500" 
+                  placeholder="Link Staging"
+                />
+                
+                <select 
+                  value={editForm.status} 
+                  onChange={(e) => setEditForm({...editForm, status: e.target.value})} 
+                  className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                >
                   <option value="Testing">Testing</option>
                   <option value="Stable">Stable</option>
                 </select>
-                <textarea rows={4} value={editForm.testing_guide} onChange={(e) => setEditForm({...editForm, testing_guide: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 resize-none" placeholder="Instruksi Panduan..."/>
+                
+                <textarea 
+                  rows={4} 
+                  value={editForm.testing_guide} 
+                  onChange={(e) => setEditForm({...editForm, testing_guide: e.target.value})} 
+                  className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 resize-none" 
+                  placeholder="Instruksi Panduan..."
+                />
+                
+                {/* Aksi simpan / batal */}
                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-850">
-                  <button type="button" onClick={() => setIsEditing(false)} className="px-3 py-1.5 bg-slate-900 text-[11px] font-bold text-slate-300 rounded-xl flex items-center gap-1"><X size={12}/> Batal</button>
-                  <button type="submit" className="px-4 py-1.5 bg-cyan-600 text-slate-950 text-[11px] font-bold rounded-xl flex items-center gap-1 shadow-lg shadow-cyan-500/10"><Save size={12}/> Simpan</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsEditing(false)} 
+                    className="px-3 py-1.5 bg-slate-900 text-[11px] font-bold text-slate-300 rounded-xl flex items-center gap-1"
+                  >
+                    <X size={12}/> Batal
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="px-4 py-1.5 bg-cyan-600 text-slate-950 text-[11px] font-bold rounded-xl flex items-center gap-1 shadow-lg shadow-cyan-500/10"
+                  >
+                    <Save size={12}/> Simpan
+                  </button>
                 </div>
               </form>
             ) : (
-              /* Tampilan Detail */
+              /* Tampilan Mode Baca Detail (Default) */
               <>
                 <div className="border-b border-slate-850 pb-3 flex justify-between items-center">
                   <h3 className="text-md font-black text-white">{selected.name}</h3>
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${selected.status === 'Stable' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{selected.status}</span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                    selected.status === 'Stable' 
+                      ? 'bg-emerald-500/10 text-emerald-400' 
+                      : 'bg-amber-500/10 text-amber-400'
+                  }`}>
+                    {selected.status}
+                  </span>
                 </div>
+                
                 <div className="space-y-1">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Target URL Environment:</p>
-                  <a href={selected.url} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 hover:underline font-mono break-all flex items-center gap-1">{selected.url} <ExternalLink size={12} /></a>
+                  <a 
+                    href={selected.url} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="text-xs text-cyan-400 hover:underline font-mono break-all flex items-center gap-1"
+                  >
+                    {selected.url} <ExternalLink size={12} />
+                  </a>
                 </div>
+                
                 <div className="space-y-1">
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Panduan Pelaksanaan Testing:</p>
-                  <div className="bg-slate-950 p-4 border border-slate-850 rounded-xl text-xs text-slate-300 whitespace-pre-line max-h-48 overflow-y-auto leading-relaxed">{selected.testing_guide || "Belum ada instruksi khusus."}</div>
+                  <div className="bg-slate-950 p-4 border border-slate-850 rounded-xl text-xs text-slate-300 whitespace-pre-line max-h-48 overflow-y-auto leading-relaxed">
+                    {selected.testing_guide || "Belum ada instruksi khusus."}
+                  </div>
                 </div>
+                
+                {/* Aksi footer modal */}
                 <div className="pt-2 border-t border-slate-850 flex justify-between gap-2">
                   {role === 'super_admin' ? (
-                    <button onClick={() => setIsEditing(true)} className="px-3 py-1.5 bg-slate-950 hover:bg-cyan-950/20 border border-slate-850 hover:border-cyan-600/30 text-xs font-bold text-cyan-400 rounded-xl flex items-center gap-1 cursor-pointer"><Edit2 size={12}/> Edit Data</button>
+                    <button 
+                      onClick={() => setIsEditing(true)} 
+                      className="px-3 py-1.5 bg-slate-950 hover:bg-cyan-950/20 border border-slate-850 hover:border-cyan-600/30 text-xs font-bold text-cyan-400 rounded-xl flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit2 size={12}/> Edit Data
+                    </button>
                   ) : <div/>}
-                  <button onClick={() => setSelected(null)} className="px-4 py-1.5 bg-slate-900 text-xs font-bold text-slate-300 rounded-xl border border-slate-800 hover:bg-slate-800 cursor-pointer">Tutup</button>
+                  <button 
+                    onClick={() => setSelected(null)} 
+                    className="px-4 py-1.5 bg-slate-900 text-xs font-bold text-slate-300 rounded-xl border border-slate-800 hover:bg-slate-800 cursor-pointer"
+                  >
+                    Tutup
+                  </button>
                 </div>
               </>
             )}
@@ -166,21 +268,70 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
         </div>
       )}
 
-      {/* Modal Tambah Platform */}
+      {/* 4. Modal Tambah Platform Staging Baru (Khusus Admin) */}
       {isOpenForm && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <form onSubmit={(e) => { e.preventDefault(); onAddPlatform(form); setIsOpenForm(false); setForm({ name: '', url: '', status: 'Testing', testing_guide: '' }); }} className="w-full max-w-md bg-[#0b111e] border border-slate-800 p-6 rounded-2xl space-y-4">
+          <form 
+            onSubmit={(e) => { 
+              e.preventDefault(); 
+              onAddPlatform(form); 
+              setIsOpenForm(false); 
+              setForm({ name: '', url: '', status: 'Testing', testing_guide: '' }); 
+            }} 
+            className="w-full max-w-md bg-[#0b111e] border border-slate-800 p-6 rounded-2xl space-y-4"
+          >
             <h3 className="text-sm font-black text-white uppercase border-b border-slate-850 pb-2 tracking-wider">Tambah Platform Staging</h3>
-            <input type="text" placeholder="Nama Aplikasi" required value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"/>
-            <input type="url" placeholder="URL Staging Link" required value={form.url} onChange={(e) => setForm({...form, url: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"/>
-            <select value={form.status} onChange={(e) => setForm({...form, status: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500">
+            
+            <input 
+              type="text" 
+              placeholder="Nama Aplikasi" 
+              required 
+              value={form.name} 
+              onChange={(e) => setForm({...form, name: e.target.value})} 
+              className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+            />
+            <input 
+              type="url" 
+              placeholder="URL Staging Link" 
+              required 
+              value={form.url} 
+              onChange={(e) => setForm({...form, url: e.target.value})} 
+              className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+            />
+            
+            <select 
+              value={form.status} 
+              onChange={(e) => setForm({...form, status: e.target.value})} 
+              className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+            >
               <option value="Testing">Testing</option>
               <option value="Stable">Stable</option>
             </select>
-            <textarea placeholder="Tulis instruksi testing..." rows={4} required value={form.testing_guide} onChange={(e) => setForm({...form, testing_guide: e.target.value})} className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 resize-none"/>
+            
+            <textarea 
+              placeholder="Tulis instruksi testing..." 
+              rows={4} 
+              required 
+              value={form.testing_guide} 
+              onChange={(e) => setForm({...form, testing_guide: e.target.value})} 
+              className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 resize-none"
+            />
+            
+            {/* Aksi submit */}
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-850">
-              <button type="button" onClick={() => setIsOpenForm(false)} className="px-3 py-1.5 bg-slate-900 text-[11px] font-bold text-slate-300 rounded-xl cursor-pointer">Batal</button>
-              <button type="submit" className="px-4 py-1.5 bg-cyan-600 text-slate-950 text-[11px] font-bold rounded-xl cursor-pointer">Simpan</button>
+              <button 
+                type="button" 
+                onClick={() => setIsOpenForm(false)} 
+                className="px-3 py-1.5 bg-slate-900 text-[11px] font-bold text-slate-300 rounded-xl cursor-pointer"
+              >
+                Batal
+              </button>
+              <button 
+                type="submit" 
+                className="px-4 py-1.5 bg-cyan-600 text-slate-950 text-[11px] font-bold rounded-xl cursor-pointer"
+              >
+                Simpan
+              </button>
             </div>
           </form>
         </div>

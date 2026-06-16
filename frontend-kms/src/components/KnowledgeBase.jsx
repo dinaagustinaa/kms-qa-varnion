@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
 import { FolderKey, Search, FileText, Calendar, ArrowLeft } from 'lucide-react';
 
+/**
+ * Komponen KnowledgeBase
+ * Digunakan untuk menampilkan pustaka dokumen panduan dan SOP divisi Quality Assurance.
+ * Pengguna dapat mencari, menyaring, dan membaca detail catatan/panduan secara penuh.
+ * 
+ * Props:
+ * - notes: array, kumpulan data dokumen panduan yang diambil dari database/API
+ * - onBackToDashboard: function, aksi navigasi kembali ke halaman Dashboard utama
+ */
 export default function KnowledgeBase({ notes, onBackToDashboard }) {
+  // State untuk pencarian teks pada judul atau isi dokumen
   const [searchQuery, setSearchQuery] = useState('');
+  // State untuk menyimpan dokumen yang sedang aktif dibaca oleh pengguna
   const [selectedNote, setSelectedNote] = useState(null);
 
-  // Filter panduan berdasarkan input pencarian user
+  // Menyaring daftar dokumen berdasarkan teks pencarian yang dimasukkan pengguna (case-insensitive)
   const filteredNotes = notes.filter(note =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
@@ -13,7 +24,8 @@ export default function KnowledgeBase({ notes, onBackToDashboard }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* HEADER ATAS KNOWLEDGE BASE */}
+      
+      {/* 1. Bagian Header Atas & Input Pencarian */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900 pb-4">
         <div>
           <h2 className="text-lg font-black text-white uppercase flex items-center gap-2 tracking-wide">
@@ -25,7 +37,7 @@ export default function KnowledgeBase({ notes, onBackToDashboard }) {
           </p>
         </div>
 
-        {/* Search Bar Komponen */}
+        {/* Input Bar Pencarian dengan Icon Lucide Search */}
         <div className="relative">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
             <Search size={14} />
@@ -40,14 +52,16 @@ export default function KnowledgeBase({ notes, onBackToDashboard }) {
         </div>
       </div>
 
-      {/* SUSUNAN LAYOUT KONTEN UTAMA */}
+      {/* 2. Susunan Grid Utama Konten */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* PANEL SEBELAH KIRI: DAFTAR LIST JUDUL DOKUMEN */}
+        {/* PANEL SEBELAH KIRI: Daftar Pilihan Dokumen */}
         <div className="md:col-span-1 bg-slate-950/40 border border-slate-900 p-4 rounded-2xl flex flex-col space-y-2 h-[500px] overflow-y-auto pr-1">
           <span className="text-[10px] font-black tracking-wider text-slate-500 uppercase px-2 mb-1">
             Available Documents ({filteredNotes.length})
           </span>
+          
+          {/* Looping data dokumen hasil saringan */}
           {filteredNotes.map((note) => (
             <button
               key={note.id}
@@ -62,13 +76,17 @@ export default function KnowledgeBase({ notes, onBackToDashboard }) {
               <span className="truncate">{note.title}</span>
             </button>
           ))}
+          
+          {/* Tampilan pesan kosong jika dokumen tidak ditemukan */}
           {filteredNotes.length === 0 && (
             <p className="text-center text-[11px] text-slate-600 py-8 italic">Dokumen tidak ditemukan.</p>
           )}
         </div>
 
-        {/* PANEL SEBELAH KANAN: TEMPAT BACA DETAIL ISI DOKUMEN UTUH */}
+        {/* PANEL SEBELAH KANAN: Reader Detail Dokumen Terpilih */}
         <div className="md:col-span-2 bg-slate-950/20 border border-slate-900 p-6 rounded-2xl h-[500px] flex flex-col justify-between">
+          
+          {/* Tampilkan detail pembaca jika ada dokumen terpilih */}
           {selectedNote ? (
             <div className="space-y-4 flex-1 flex flex-col min-h-0">
               <div className="border-b border-slate-900 pb-3">
@@ -79,20 +97,23 @@ export default function KnowledgeBase({ notes, onBackToDashboard }) {
                 </div>
               </div>
               
-              {/* Tempat teks panjang penuh baca dokumen */}
+              {/* Box Teks panjang isi dokumen dengan style penanganan baris baru (whitespace-pre-line) */}
               <div className="flex-1 bg-slate-950/60 border border-slate-900 p-5 rounded-xl text-xs text-slate-300 leading-relaxed whitespace-pre-line overflow-y-auto font-sans">
                 {selectedNote.content}
               </div>
             </div>
           ) : (
+            // State awal / kosong saat pengguna belum memilih satu pun dokumen
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-900 rounded-xl">
               <div className="text-slate-700 mb-2"><FolderKey size={36} /></div>
               <h3 className="text-xs font-bold text-slate-400">Belum Ada Dokumen QA yang Dipilih</h3>
-              <p className="text-[11px] text-slate-500 max-w-xs mt-1">Silakan pilih salah satu judul panduan di panel sebelah kiri untuk mulai membaca seluruh isi dokumentasi penuh.</p>
+              <p className="text-[11px] text-slate-500 max-w-xs mt-1">
+                Silakan pilih salah satu judul panduan di panel sebelah kiri untuk mulai membaca seluruh isi dokumentasi penuh.
+              </p>
             </div>
           )}
 
-          {/* Tombol Navigasi Kembali Cepat */}
+          {/* Bagian Bawah: Aksi Navigasi Kembali */}
           <div className="pt-4 border-t border-slate-900 flex justify-end">
             <button 
               onClick={onBackToDashboard}

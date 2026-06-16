@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Calendar, CheckCircle2, AlertCircle, Save, Loader2 } from 'lucide-react';
 
 export default function Profile({ user, onUpdateSession }) {
+  // State lokal untuk menampung data input form nama lengkap dan email
   const [formData, setFormData] = useState({
     name: user.name || '',
     email: user.email || ''
   });
+  // State untuk menampilkan alert sukses atau error dari hasil request API
   const [status, setStatus] = useState({ success: '', error: '' });
+  // State untuk mengontrol status loading saat pengiriman data sedang berlangsung
   const [loading, setLoading] = useState(false);
 
-  // Sync state if user prop changes
+  // Sinkronisasi state form jika data user dari prop berubah (misal setelah page reload/fetch ulang)
   useEffect(() => {
     setFormData({
       name: user.name || '',
@@ -17,36 +20,38 @@ export default function Profile({ user, onUpdateSession }) {
     });
   }, [user]);
 
+  // Handler untuk memproses submit form profil
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus({ success: '', error: '' });
-    setLoading(true);
+    e.preventDefault(); // Mencegah reload halaman default bawaan form submit
+    setStatus({ success: '', error: '' }); // Reset status alert sebelumnya
+    setLoading(true); // Aktifkan indikator loading (tombol simpan berubah menjadi 'Menyimpan...')
 
     try {
+      // Kirim request PUT ke endpoint backend untuk memperbarui profil berdasarkan ID user
       const res = await fetch(`http://localhost:5000/api/users/profile/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      setLoading(false);
+      setLoading(false); // Nonaktifkan loading setelah respons diterima
 
       if (data.success) {
-        setStatus({ success: data.message, error: '' });
-        // Update user session di parent component dan localStorage
+        setStatus({ success: data.message, error: '' }); // Set pesan sukses
+        // Perbarui sesi pengguna di komponen utama (App.jsx) dan penyimpanan lokal (localStorage)
         if (onUpdateSession) {
           onUpdateSession(data.user);
         }
       } else {
-        setStatus({ success: '', error: data.message });
+        setStatus({ success: '', error: data.message }); // Set pesan error jika API gagal memproses
       }
     } catch (err) {
-      setLoading(false);
+      setLoading(false); // Matikan loading jika terjadi kegagalan koneksi
       setStatus({ success: '', error: 'Gagal memperbarui profil. Cek koneksi server.' });
     }
   };
 
-  // Format tanggal gabung
+  // Memformat tanggal pendaftaran user ke format bahasa Indonesia (contoh: 15 Juni 2026)
   const formatJoinedDate = (dateStr) => {
     if (!dateStr) return '-';
     try {
@@ -57,10 +62,11 @@ export default function Profile({ user, onUpdateSession }) {
         year: 'numeric'
       });
     } catch (e) {
-      return dateStr;
+      return dateStr; // Kembalikan string asli jika format tanggal tidak valid
     }
   };
 
+  // Mendapatkan inisial huruf dari nama atau username untuk ditampilkan pada avatar (maksimal 2 huruf)
   const getInitials = (nameStr, usernameStr) => {
     const target = nameStr || usernameStr || 'QA';
     return target.split(' ')
@@ -72,7 +78,7 @@ export default function Profile({ user, onUpdateSession }) {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* HEADER ATAS */}
+      {/* Header halaman profil */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900 pb-4">
         <div>
           <h2 className="text-lg font-black text-white uppercase flex items-center gap-2.5 tracking-wide">
@@ -86,10 +92,10 @@ export default function Profile({ user, onUpdateSession }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* PANEL KIRI: PREVIEW AVATAR & AKUN */}
+        {/* Panel Kiri: Ringkasan profil dan tampilan avatar */}
         <div className="lg:col-span-1 bg-slate-950/40 border border-slate-900 p-6 rounded-2xl flex flex-col items-center text-center space-y-4">
           <div className="relative group">
-            {/* Glow effect */}
+            {/* Efek pendaran (glow) di belakang avatar */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-300"></div>
             <div className="relative w-24 h-24 rounded-2xl bg-[#090f19] border border-slate-800 flex items-center justify-center text-cyan-400 text-3xl font-black shadow-inner">
               {getInitials(formData.name, user.username)}
@@ -124,7 +130,7 @@ export default function Profile({ user, onUpdateSession }) {
           </div>
         </div>
 
-        {/* PANEL KANAN: FORM EDIT PROFIL */}
+        {/* Panel Kanan: Form pengaturan profil lengkap */}
         <div className="lg:col-span-2 bg-slate-950/20 border border-slate-900 p-6 rounded-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="border-b border-slate-900 pb-3 mb-2">

@@ -1,32 +1,45 @@
 import React, { useState } from 'react';
 import { Settings as SettingsIcon, ShieldAlert, UserPlus, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 
+/**
+ * Komponen Settings
+ * Digunakan untuk mengelola konfigurasi keamanan akun dan panel administrasi pengguna.
+ * - Tab "Ganti Sandi Mandiri" dapat diakses oleh semua pengguna.
+ * - Tab "Pusat Kendali User" dan "Reset Sandi Massal" hanya ditampilkan jika pengguna memiliki role 'super_admin'.
+ * 
+ * Props:
+ * - user: object, data pengguna yang sedang aktif (login)
+ */
 export default function Settings({ user }) {
+  // Mengecek apakah pengguna aktif adalah Super Admin
   const isAdmin = user.role === 'super_admin';
-  const [activeTab, setActiveTab] = useState('change_password'); // 'change_password', 'create_user', 'reset_password'
+  // State untuk mengontrol tab aktif pada menu pengaturan
+  const [activeTab, setActiveTab] = useState('change_password'); 
 
-  // State untuk Ganti Password Mandiri
+  // State form & status untuk Ganti Password Mandiri
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordStatus, setPasswordStatus] = useState({ success: '', error: '' });
 
-  // State untuk Pusat Kendali Pengguna (Admin)
+  // State form & status untuk Pusat Kendali Pengguna / Registrasi User Baru (Khusus Admin)
   const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user_qa', name: '', email: '' });
   const [userStatus, setUserStatus] = useState({ success: '', error: '' });
 
-  // State untuk Reset Password Orang Lain (Admin)
+  // State form & status untuk Reset Password Pengguna Lain (Khusus Admin)
   const [resetForm, setResetForm] = useState({ targetUsername: '', newPassword: '', confirmPassword: '' });
   const [resetStatus, setResetStatus] = useState({ success: '', error: '' });
 
-  // Handler Ganti Password Mandiri
+  // Handler Ganti Password Mandiri (Semua User)
   const handlePasswordChange = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Mencegah reload halaman
     setPasswordStatus({ success: '', error: '' });
 
+    // Validasi kecocokan konfirmasi password
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       return setPasswordStatus({ success: '', error: 'Konfirmasi password baru tidak cocok.' });
     }
 
     try {
+      // Mengirim data password lama & baru ke endpoint API
       const res = await fetch('http://localhost:5000/api/users/change-password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -39,6 +52,7 @@ export default function Settings({ user }) {
       const data = await res.json();
       if (data.success) {
         setPasswordStatus({ success: data.message, error: '' });
+        // Reset isi input form setelah sukses
         setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       } else {
         setPasswordStatus({ success: '', error: data.message });
@@ -48,12 +62,13 @@ export default function Settings({ user }) {
     }
   };
 
-  // Handler Tambah User QA Baru (Admin)
+  // Handler Tambah User QA / Admin Baru (Hanya Super Admin)
   const handleCreateUser = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Mencegah reload halaman
     setUserStatus({ success: '', error: '' });
 
     try {
+      // Mengirim payload registrasi ke backend dengan verifikasi header role admin
       const res = await fetch('http://localhost:5000/api/users', {
         method: 'POST',
         headers: { 
@@ -65,6 +80,7 @@ export default function Settings({ user }) {
       const data = await res.json();
       if (data.success) {
         setUserStatus({ success: data.message, error: '' });
+        // Reset isi input form registrasi setelah sukses
         setUserForm({ username: '', password: '', role: 'user_qa', name: '', email: '' });
       } else {
         setUserStatus({ success: '', error: data.message });
@@ -74,16 +90,18 @@ export default function Settings({ user }) {
     }
   };
 
-  // Handler Reset Password Pengguna Lain (Admin)
+  // Handler Reset Paksa Password Pengguna Lain (Hanya Super Admin)
   const handleResetPassword = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Mencegah reload halaman
     setResetStatus({ success: '', error: '' });
 
+    // Validasi kecocokan konfirmasi password baru target
     if (resetForm.newPassword !== resetForm.confirmPassword) {
       return setResetStatus({ success: '', error: 'Konfirmasi password baru tidak cocok.' });
     }
 
     try {
+      // Mengirim request reset ke backend dengan melampirkan header role admin
       const res = await fetch('http://localhost:5000/api/users/reset-password', {
         method: 'PUT',
         headers: { 
@@ -98,6 +116,7 @@ export default function Settings({ user }) {
       const data = await res.json();
       if (data.success) {
         setResetStatus({ success: data.message, error: '' });
+        // Reset isi input form reset setelah sukses
         setResetForm({ targetUsername: '', newPassword: '', confirmPassword: '' });
       } else {
         setResetStatus({ success: '', error: data.message });
@@ -109,7 +128,8 @@ export default function Settings({ user }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* HEADER ATAS SETTINGS */}
+      
+      {/* 1. Header Pengaturan */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-900 pb-4">
         <div>
           <h2 className="text-lg font-black text-white uppercase flex items-center gap-2.5 tracking-wide">
@@ -122,15 +142,16 @@ export default function Settings({ user }) {
         </div>
       </div>
 
-      {/* LAYOUT UTAMA SETTINGS */}
+      {/* 2. Grid Menu & Form Konten */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         
-        {/* PANEL SEBELAH KIRI: NAVIGATION TABS (Hanya tampil penuh jika Admin) */}
+        {/* PANEL SEBELAH KIRI: Tab Navigasi Pengaturan */}
         <div className="md:col-span-1 bg-slate-950/40 border border-slate-900 p-4 rounded-2xl flex flex-col space-y-1.5 h-fit">
           <span className="text-[9px] font-black tracking-wider text-slate-500 uppercase px-2 mb-1.5">
             Menu Pengaturan
           </span>
           
+          {/* Tombol Tab: Ganti Sandi Mandiri */}
           <button
             onClick={() => setActiveTab('change_password')}
             className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -143,8 +164,10 @@ export default function Settings({ user }) {
             <span>Ganti Sandi Mandiri</span>
           </button>
 
+          {/* Menampilkan menu khusus admin jika role = super_admin */}
           {isAdmin && (
             <>
+              {/* Tombol Tab: Registrasi User Baru */}
               <button
                 onClick={() => setActiveTab('create_user')}
                 className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -157,6 +180,7 @@ export default function Settings({ user }) {
                 <span>Pusat Kendali User</span>
               </button>
 
+              {/* Tombol Tab: Reset Sandi Massal/Lainnya */}
               <button
                 onClick={() => setActiveTab('reset_password')}
                 className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -172,10 +196,10 @@ export default function Settings({ user }) {
           )}
         </div>
 
-        {/* PANEL SEBELAH KANAN: FORM KONTEN AKTIF */}
+        {/* PANEL SEBELAH KANAN: Tempat Rendering Form Berdasarkan Tab Aktif */}
         <div className="md:col-span-3 bg-slate-950/20 border border-slate-900 p-6 rounded-2xl min-h-[350px] flex flex-col justify-between">
           
-          {/* TAB 1: GANTI PASSWORD MANDIRI */}
+          {/* TAB 1: FORM GANTI PASSWORD MANDIRI */}
           {activeTab === 'change_password' && (
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="border-b border-slate-900 pb-3 mb-2">
@@ -183,13 +207,13 @@ export default function Settings({ user }) {
                 <p className="text-[11px] text-slate-400 mt-0.5">Ubah sandi login Anda secara berkala demi keamanan platform.</p>
               </div>
 
+              {/* Tampilan alert sukses/error */}
               {passwordStatus.success && (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
                   <CheckCircle2 size={16} />
                   <span>{passwordStatus.success}</span>
                 </div>
               )}
-
               {passwordStatus.error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 text-xs rounded-xl flex items-center gap-2">
                   <AlertCircle size={16} />
@@ -197,6 +221,7 @@ export default function Settings({ user }) {
                 </div>
               )}
 
+              {/* Input grid ganti password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-slate-400 text-[10px] font-bold uppercase mb-1.5">Kata Sandi Lama</label>
@@ -235,6 +260,7 @@ export default function Settings({ user }) {
                 </div>
               </div>
 
+              {/* Aksi submit */}
               <div className="pt-4 flex justify-end">
                 <button
                   type="submit"
@@ -246,7 +272,7 @@ export default function Settings({ user }) {
             </form>
           )}
 
-          {/* TAB 2: PUSAT KENDALI USER (ADMIN ONLY) */}
+          {/* TAB 2: FORM REGISTRASI USER BARU (ADMIN ONLY) */}
           {activeTab === 'create_user' && isAdmin && (
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="border-b border-slate-900 pb-3 mb-2">
@@ -254,13 +280,13 @@ export default function Settings({ user }) {
                 <p className="text-[11px] text-slate-400 mt-0.5">Daftarkan akun QA Engineer atau Super Admin baru ke dalam basis data.</p>
               </div>
 
+              {/* Tampilan alert sukses/error */}
               {userStatus.success && (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
                   <CheckCircle2 size={16} />
                   <span>{userStatus.success}</span>
                 </div>
               )}
-
               {userStatus.error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 text-xs rounded-xl flex items-center gap-2">
                   <AlertCircle size={16} />
@@ -268,6 +294,7 @@ export default function Settings({ user }) {
                 </div>
               )}
 
+              {/* Input grid form registrasi */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-400 text-[10px] font-bold uppercase mb-1.5">Nama Lengkap</label>
@@ -330,6 +357,7 @@ export default function Settings({ user }) {
                 </div>
               </div>
 
+              {/* Aksi submit */}
               <div className="pt-4 flex justify-end">
                 <button
                   type="submit"
@@ -341,7 +369,7 @@ export default function Settings({ user }) {
             </form>
           )}
 
-          {/* TAB 3: RESET PASSWORD ORANG LAIN (ADMIN ONLY) */}
+          {/* TAB 3: FORM RESET PASSWORD PENGGUNA LAIN (ADMIN ONLY) */}
           {activeTab === 'reset_password' && isAdmin && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="border-b border-slate-900 pb-3 mb-2">
@@ -349,13 +377,13 @@ export default function Settings({ user }) {
                 <p className="text-[11px] text-slate-400 mt-0.5">Setel ulang paksa password anggota tim QA yang lupa kata sandi.</p>
               </div>
 
+              {/* Tampilan alert sukses/error */}
               {resetStatus.success && (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
                   <CheckCircle2 size={16} />
                   <span>{resetStatus.success}</span>
                 </div>
               )}
-
               {resetStatus.error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 text-xs rounded-xl flex items-center gap-2">
                   <AlertCircle size={16} />
@@ -363,6 +391,7 @@ export default function Settings({ user }) {
                 </div>
               )}
 
+              {/* Input grid form reset password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="block text-slate-400 text-[10px] font-bold uppercase mb-1.5">Username Target</label>
@@ -401,6 +430,7 @@ export default function Settings({ user }) {
                 </div>
               </div>
 
+              {/* Aksi submit */}
               <div className="pt-4 flex justify-end">
                 <button
                   type="submit"

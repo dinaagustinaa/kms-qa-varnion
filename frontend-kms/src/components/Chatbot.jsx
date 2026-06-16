@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, MessageSquare, FolderKey, Layers, ArrowLeft, ExternalLink } from 'lucide-react';
 
+/**
+ * Komponen Chatbot
+ * Menyediakan widget chatbot asisten virtual melayang di pojok kanan bawah dashboard.
+ * Membantu tim QA menavigasi direktori staging dan dokumen panduan (Knowledge Base)
+ * secara interaktif melalui alur obrolan terpandu.
+ * 
+ * Props:
+ * - user: object, data pengguna yang sedang login (digunakan untuk menyapa nama)
+ * - platforms: array, daftar platform staging dari database
+ * - notes: array, daftar catatan panduan dari database
+ */
 export default function Chatbot({ user, platforms = [], notes = [] }) {
+  // State untuk mengontrol status buka/tutup jendela chatbox
   const [isOpen, setIsOpen] = useState(false);
+  // State untuk menyimpan daftar pesan obrolan (riwayat percakapan)
   const [history, setHistory] = useState([]);
+  // Ref untuk mengarahkan scroll otomatis ke bagian pesan paling bawah
   const endRef = useRef(null);
 
-  // Fungsi untuk memicu menu paling utama (Sesuai teks persis di image_4a1c60.png)
+  // Fungsi untuk memicu/mereset ke Menu Utama chatbot
   const loadMainMenu = () => {
     const clientName = user?.username || 'Penguji';
     setHistory([
@@ -18,18 +32,19 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
     ]);
   };
 
+  // Efek untuk memuat menu utama saat widget pertama kali dibuka oleh pengguna
   useEffect(() => {
     if (isOpen && history.length === 0) {
       loadMainMenu();
     }
   }, [isOpen, user]);
 
+  // Efek untuk meluncurkan scroll ke elemen terbawah setiap kali ada pesan baru
   useEffect(() => {
-    // Memastikan gelembung chat otomatis meluncur ke bawah saat ada pesan baru
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history]);
 
-  // HANDLER UTAMA SAAT USER MEMILIH KATEGORI
+  // Handler utama saat user menekan pilihan menu kategori (Staging vs Notes)
   const handleSelectMenu = (pilihan) => {
     if (pilihan === 'staging') {
       setHistory(prev => [
@@ -54,7 +69,7 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
     }
   };
 
-  // ✨ PERBAIKAN BUG KUNCI: Menggunakan parameter 'jenis' secara benar agar tidak crash
+  // Handler saat pengguna memilih salah satu item spesifik dari list platform/note
   const handleSelectItem = (item, jenis) => {
     if (jenis === 'platform') {
       setHistory(prev => [
@@ -83,11 +98,11 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end font-sans">
       
-      {/* JENDELA WIDGET CHATBOX */}
+      {/* JENDELA WIDGET CHATBOX (Hanya muncul jika isOpen = true) */}
       {isOpen && (
         <div className="w-80 md:w-96 h-[460px] rounded-2xl bg-[#0b111e] border border-slate-800 shadow-2xl flex flex-col mb-3 overflow-hidden animate-fade-in">
           
-          {/* HEADER (SINKRON GAYA CYBERPUNK) */}
+          {/* Header Chatbox */}
           <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <h3 className="text-xs font-black text-white flex items-center gap-2 tracking-wide">
               <Bot size={16} className="text-cyan-400"/> Asisten Virtual QA
@@ -95,12 +110,12 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
             <button onClick={() => setIsOpen(false)} className="text-xs text-slate-500 hover:text-white cursor-pointer">✕</button>
           </div>
 
-          {/* AREA RIWAYAT OBROLAN */}
+          {/* Area Riwayat Percakapan (Scrollable) */}
           <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs flex flex-col bg-[#070b12]/40">
             {history.map((chat, idx) => (
               <div key={idx} className={`flex flex-col ${chat.sender === 'user' ? 'items-end' : 'items-start'}`}>
                 
-                {/* Balon Kata */}
+                {/* Gelembung pesan dengan pembeda warna pengirim */}
                 <div className={`p-3 rounded-xl max-w-[85%] whitespace-pre-line leading-relaxed ${
                   chat.sender === 'user' 
                     ? 'bg-cyan-600 text-slate-950 font-bold rounded-br-none' 
@@ -109,7 +124,7 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
                   {chat.text}
                 </div>
 
-                {/* AREA OPSI 1: TOMBOL PILIHAN KATEGORI UTAMA (PERSIS IMAGE_4A1C60.PNG) */}
+                {/* OPSI 1: Menu Kategori Utama */}
                 {chat.sender === 'bot' && chat.type === 'menu' && (
                   <div className="flex flex-col gap-2 mt-3 w-full max-w-[85%]">
                     <button 
@@ -127,7 +142,7 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
                   </div>
                 )}
 
-                {/* AREA OPSI 2: LISTING NAMA PLATFORM SECARA REAL-TIME */}
+                {/* OPSI 2: Listing Nama Platform Staging dari DB */}
                 {chat.sender === 'bot' && chat.type === 'list_platforms' && (
                   <div className="flex flex-col gap-1.5 mt-2.5 w-full max-w-[85%] max-h-40 overflow-y-auto bg-slate-950/60 p-2 rounded-xl border border-slate-900 custom-scrollbar">
                     {platforms.map((p) => (
@@ -144,7 +159,7 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
                   </div>
                 )}
 
-                {/* AREA OPSI 3: LISTING JUDUL NOTES SECARA REAL-TIME */}
+                {/* OPSI 3: Listing Catatan/Notes dari DB */}
                 {chat.sender === 'bot' && chat.type === 'list_notes' && (
                   <div className="flex flex-col gap-1.5 mt-2.5 w-full max-w-[85%] max-h-40 overflow-y-auto bg-slate-950/60 p-2 rounded-xl border border-slate-900 custom-scrollbar">
                     {notes.map((n) => (
@@ -161,7 +176,7 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
                   </div>
                 )}
 
-                {/* AREA OPSI TERAKHIR: TOMBOL KEMBALI KE MENU UTAMA ATAU BUKA LINK */}
+                {/* OPSI TERAKHIR: Buka link platform atau tombol reset ke menu utama */}
                 {chat.sender === 'bot' && (chat.type === 'final' || chat.type === 'final_platform') && (
                   <div className="flex flex-col gap-2 mt-2.5">
                     {chat.type === 'final_platform' && chat.url && (
@@ -185,13 +200,14 @@ export default function Chatbot({ user, platforms = [], notes = [] }) {
 
               </div>
             ))}
+            {/* Elemen target scroll */}
             <div ref={endRef} />
           </div>
 
         </div>
       )}
 
-      {/* FLOATING BUTTON BULAT DI POJOK BAWAH */}
+      {/* Tombol Bulat Mengambang Untuk Membuka Chatbox */}
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className="p-3.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded-full shadow-xl shadow-cyan-500/10 active:scale-95 transition-all cursor-pointer"
