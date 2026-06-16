@@ -1,34 +1,81 @@
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, ShieldAlert, UserPlus, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, ShieldAlert, UserPlus, KeyRound, AlertCircle, CheckCircle2, Users, Trash2 } from 'lucide-react';
 
 /**
  * Komponen Settings
- * Digunakan untuk mengelola konfigurasi keamanan akun dan panel administrasi pengguna.
- * - Tab "Ganti Sandi Mandiri" dapat diakses oleh semua pengguna.
- * - Tab "Pusat Kendali User" dan "Reset Sandi Massal" hanya ditampilkan jika pengguna memiliki role 'super_admin'.
+ * Digunakan untuk mengelola konfigurasi keamanan akun dan panel administrasi User.
+ * - Tab "Ganti Sandi" dapat diakses oleh semua User.
+ * - Tab "Registrasi User Baru" dan "Reset Sandi Akun User" hanya ditampilkan jika User memiliki role 'super_admin'.
  * 
  * Props:
- * - user: object, data pengguna yang sedang aktif (login)
+ * - user: object, data User yang sedang aktif (login)
  */
 export default function Settings({ user }) {
-  // Mengecek apakah pengguna aktif adalah Super Admin
+  // Mengecek apakah User aktif adalah Super Admin
   const isAdmin = user.role === 'super_admin';
   // State untuk mengontrol tab aktif pada menu pengaturan
   const [activeTab, setActiveTab] = useState('change_password'); 
 
-  // State form & status untuk Ganti Password Mandiri
+  // State form & status untuk Ganti Password 
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordStatus, setPasswordStatus] = useState({ success: '', error: '' });
 
-  // State form & status untuk Pusat Kendali Pengguna / Registrasi User Baru (Khusus Admin)
+  // State form & status untuk Registrasi User Baru (Khusus Admin)
   const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user_qa', name: '', email: '' });
   const [userStatus, setUserStatus] = useState({ success: '', error: '' });
 
-  // State form & status untuk Reset Password Pengguna Lain (Khusus Admin)
+  // State form & status untuk Reset Password User Lain (Khusus Admin)
   const [resetForm, setResetForm] = useState({ targetUsername: '', newPassword: '', confirmPassword: '' });
   const [resetStatus, setResetStatus] = useState({ success: '', error: '' });
 
-  // Handler Ganti Password Mandiri (Semua User)
+  // State untuk menyimpan daftar semua pengguna
+  const [usersList, setUsersList] = useState([]);
+  const [listStatus, setListStatus] = useState({ success: '', error: '' });
+
+  // Fungsi untuk memuat data semua pengguna dari backend
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        setUsersList(data);
+      } else {
+        setListStatus({ success: '', error: 'Gagal memuat daftar pengguna.' });
+      }
+    } catch (err) {
+      setListStatus({ success: '', error: 'Gagal memuat daftar pengguna. Hubungi admin atau periksa server.' });
+    }
+  };
+
+  // Efek untuk memuat daftar pengguna jika tab aktif adalah 'users_list'
+  useEffect(() => {
+    if (activeTab === 'users_list') {
+      fetchUsers();
+    }
+  }, [activeTab]);
+
+  // Handler Hapus User (Hanya Admin)
+  const handleDeleteUser = async (id, targetUsername) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus akun user "${targetUsername}"?`)) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/users/${id}`, {
+          method: 'DELETE',
+          headers: { 'userrole': user.role }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setListStatus({ success: `Akun "${targetUsername}" berhasil dihapus.`, error: '' });
+          fetchUsers(); // Refresh daftar pengguna
+        } else {
+          setListStatus({ success: '', error: data.message || 'Gagal menghapus user.' });
+        }
+      } catch (err) {
+        setListStatus({ success: '', error: 'Gagal menghapus user. Cek koneksi server.' });
+      }
+    }
+  };
+
+  // Handler Ganti Password (Semua User)
   const handlePasswordChange = async (e) => {
     e.preventDefault(); // Mencegah reload halaman
     setPasswordStatus({ success: '', error: '' });
@@ -90,7 +137,7 @@ export default function Settings({ user }) {
     }
   };
 
-  // Handler Reset Paksa Password Pengguna Lain (Hanya Super Admin)
+  // Handler Reset Paksa Password User Lain (Hanya Super Admin)
   const handleResetPassword = async (e) => {
     e.preventDefault(); // Mencegah reload halaman
     setResetStatus({ success: '', error: '' });
@@ -151,7 +198,7 @@ export default function Settings({ user }) {
             Menu Pengaturan
           </span>
           
-          {/* Tombol Tab: Ganti Sandi Mandiri */}
+          {/* Tombol Tab: Ganti Sandi */}
           <button
             onClick={() => setActiveTab('change_password')}
             className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -161,7 +208,7 @@ export default function Settings({ user }) {
             }`}
           >
             <KeyRound size={14} />
-            <span>Ganti Sandi Mandiri</span>
+            <span>Ganti Sandi</span>
           </button>
 
           {/* Menampilkan menu khusus admin jika role = super_admin */}
@@ -177,10 +224,10 @@ export default function Settings({ user }) {
                 }`}
               >
                 <UserPlus size={14} />
-                <span>Pusat Kendali User</span>
+                <span>Registrasi User Baru</span>
               </button>
 
-              {/* Tombol Tab: Reset Sandi Massal/Lainnya */}
+              {/* Tombol Tab: Reset Sandi Akun User/Lainnya */}
               <button
                 onClick={() => setActiveTab('reset_password')}
                 className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -190,16 +237,29 @@ export default function Settings({ user }) {
                 }`}
               >
                 <ShieldAlert size={14} />
-                <span>Reset Sandi Massal</span>
+                <span>Reset Sandi Akun User</span>
               </button>
             </>
           )}
+
+          {/* Tombol Tab: Daftar Pengguna */}
+          <button
+            onClick={() => setActiveTab('users_list')}
+            className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'users_list'
+                ? 'bg-cyan-600/10 border-cyan-500/20 text-cyan-400'
+                : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-900/60 hover:text-white'
+            }`}
+          >
+            <Users size={14} />
+            <span>Daftar Pengguna</span>
+          </button>
         </div>
 
         {/* PANEL SEBELAH KANAN: Tempat Rendering Form Berdasarkan Tab Aktif */}
         <div className="md:col-span-3 bg-slate-950/20 border border-slate-900 p-6 rounded-2xl min-h-[350px] flex flex-col justify-between">
           
-          {/* TAB 1: FORM GANTI PASSWORD MANDIRI */}
+          {/* TAB 1: FORM GANTI PASSWORD */}
           {activeTab === 'change_password' && (
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="border-b border-slate-900 pb-3 mb-2">
@@ -369,7 +429,7 @@ export default function Settings({ user }) {
             </form>
           )}
 
-          {/* TAB 3: FORM RESET PASSWORD PENGGUNA LAIN (ADMIN ONLY) */}
+          {/* TAB 3: FORM RESET PASSWORD USER LAIN (ADMIN ONLY) */}
           {activeTab === 'reset_password' && isAdmin && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="border-b border-slate-900 pb-3 mb-2">
@@ -440,6 +500,77 @@ export default function Settings({ user }) {
                 </button>
               </div>
             </form>
+          )}
+
+          {/* TAB 4: DAFTAR PENGGUNA */}
+          {activeTab === 'users_list' && (
+            <div className="space-y-4">
+              <div className="border-b border-slate-900 pb-3 mb-2 flex justify-between items-center">
+                <div>
+                  <h3 className="text-sm font-black text-white uppercase">Daftar Semua Pengguna</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Melihat semua akun penguji divisi Quality Assurance yang terdaftar.</p>
+                </div>
+              </div>
+
+              {/* Tampilan alert sukses/error */}
+              {listStatus.success && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs rounded-xl flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  <span>{listStatus.success}</span>
+                </div>
+              )}
+              {listStatus.error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 text-xs rounded-xl flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  <span>{listStatus.error}</span>
+                </div>
+              )}
+
+              {/* List Pengguna */}
+              <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                {usersList.map((usr) => (
+                  <div key={usr.id} className="p-3.5 bg-slate-950/40 border border-slate-900 hover:border-slate-800 rounded-xl flex items-center justify-between transition-all">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar Bulat Inisial */}
+                      <div className="w-8 h-8 rounded-lg bg-cyan-600/15 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                        {(usr.name || usr.username).substring(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-200 capitalize truncate">{usr.name || usr.username}</span>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+                            usr.role === 'super_admin' 
+                              ? 'bg-cyan-500/10 text-cyan-400' 
+                              : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {usr.role === 'super_admin' ? 'Lead QA' : 'QA Engineer'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                          @{usr.username} • {usr.email || 'Email belum diatur'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tombol Hapus (Hanya muncul untuk Admin, dan hanya boleh menghapus user biasa) */}
+                    {isAdmin && usr.role !== 'super_admin' && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUser(usr.id, usr.username)}
+                        className="text-red-500 hover:text-red-400 hover:bg-red-500/5 p-2 rounded-xl transition-colors cursor-pointer"
+                        title="Hapus Akun User"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                {usersList.length === 0 && (
+                  <p className="text-center text-[11px] text-slate-600 py-8 italic">Tidak ada data pengguna.</p>
+                )}
+              </div>
+            </div>
           )}
 
         </div>

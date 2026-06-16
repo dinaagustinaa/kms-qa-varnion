@@ -186,6 +186,32 @@ app.put('/api/users/change-password', (req, res) => {
     });
 });
 
+// Get all users
+app.get('/api/users', (req, res) => {
+    db.query('SELECT id, username, name, email, role, created_at FROM users', (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+// Delete user (Hanya Admin, dan hanya boleh menghapus user biasa)
+app.delete('/api/users/:id', verifikasiAdmin, (req, res) => {
+    const { id } = req.params;
+    db.query('SELECT role FROM users WHERE id = ?', [id], (err, results) => {
+        if (err) return res.status(500).json(err);
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
+        }
+        if (results[0].role === 'super_admin') {
+            return res.status(400).json({ success: false, message: 'Tidak dapat menghapus akun administrator.' });
+        }
+        db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
+            if (err) return res.status(500).json(err);
+            res.json({ success: true, message: 'User berhasil dihapus.' });
+        });
+    });
+});
+
 // Get data platform
 app.get('/api/platforms', (req, res) => {
     db.query('SELECT * FROM platforms', (err, results) => {
@@ -332,96 +358,6 @@ app.delete('/api/knowledge/:id', verifikasiAdmin, (req, res) => {
         if (err) return res.status(500).json(err);
         res.json({ success: true, message: 'Dokumen berhasil dihapus.' });
     });
-});
-
-// API Asisten Virtual dengan Integrasi Database Real-time
-app.get('/api/chat/:nodeId', (req, res) => {
-    const { nodeId } = req.params;
-    const { username } = req.query;
-    const clientName = username ? username : 'Penguji';
-
-    if (nodeId === 'start') {
-        res.json({
-            text: `Halo ${clientName}! Selamat datang di KMS QA. Opsi modul panduan mana yang ingin kamu validasi hari ini?`,
-            options: [
-                { text: 'Cari Platform Staging', next: 'plat_list' },
-                { text: 'Cari Panduan QA (Notes)', next: 'notes_list' }
-            ]
-        });
-    } else if (nodeId === 'plat_list') {
-        db.query('SELECT id, name FROM platforms', (err, results) => {
-            if (err) return res.status(500).json(err);
-            const options = results.map(row => ({
-                text: row.name,
-                next: `plat_detail_${row.id}`
-            }));
-            options.push({ text: 'Kembali ke Menu Utama', next: 'start' });
-            res.json({
-                text: 'Berikut adalah daftar platform staging yang terdaftar di database:',
-                options: options
-            });
-        });
-    } else if (nodeId.startsWith('plat_detail_')) {
-        const platId = nodeId.replace('plat_detail_', '');
-        db.query('SELECT name, url, status, testing_guide FROM platforms WHERE id = ?', [platId], (err, results) => {
-            if (err) return res.status(500).json(err);
-            if (results.length > 0) {
-                const p = results[0];
-                res.json({
-                    text: `[Platform: ${p.name}]\nStatus: ${p.status}\nURL: ${p.url}\n\nPanduan Testing:\n${p.testing_guide || 'Tidak ada instruksi khusus.'}`,
-                    options: [
-                        { text: 'Kembali ke List Platform', next: 'plat_list' },
-                        { text: 'Kembali ke Menu Utama', next: 'start' }
-                    ]
-                });
-            } else {
-                res.status(404).json({ message: 'Platform tidak ditemukan.' });
-            }
-        });
-    } else if (nodeId === 'notes_list') {
-        db.query('SELECT id, title FROM kanban_notes', (err, results) => {
-            if (err) return res.status(500).json(err);
-            const options = results.map(row => ({
-                text: row.title,
-                next: `notes_detail_${row.id}`
-            }));
-            options.push({ text: 'Kembali ke Menu Utama', next: 'start' });
-            res.json({
-                text: 'Berikut adalah daftar dokumen panduan QA (Notes) yang terdaftar di database:',
-                options: options
-            });
-        });
-    } else if (nodeId.startsWith('notes_detail_')) {
-        const noteId = nodeId.replace('notes_detail_', '');
-        db.query('SELECT title, content FROM kanban_notes WHERE id = ?', [noteId], (err, results) => {
-            if (err) return res.status(500).json(err);
-            if (results.length > 0) {
-                const n = results[0];
-                res.json({
-                    text: `[Dokumen: ${n.title}]\n\n${n.content}`,
-                    options: [
-                        { text: 'Kembali ke List Panduan', next: 'notes_list' },
-                        { text: 'Kembali ke Menu Utama', next: 'start' }
-                    ]
-                });
-            } else {
-                res.status(404).json({ message: 'Dokumen tidak ditemukan.' });
-            }
-        });
-    } else {
-        // Fallback ke chat_nodes static
-        db.query('SELECT * FROM chat_nodes WHERE node_id = ?', [nodeId], (err, results) => {
-            if (err) return res.status(500).json(err);
-            if (results.length > 0) {
-                res.json({
-                    text: results[0].bot_text,
-                    options: JSON.parse(results[0].options_json)
-                });
-            } else {
-                res.status(404).json({ message: 'Rute panduan tidak ditemukan.' });
-            }
-        });
-    }
 });
 
 // Server listener
