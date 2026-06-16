@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Layers, LogOut, LayoutDashboard, Settings, User, FolderKey } from 'lucide-react';
+import { Layers, LogOut, LayoutDashboard, Settings, FolderKey } from 'lucide-react';
 import LoginCard from './components/LoginCard';
 import PlatformGrid from './components/PlatformGrid';
-import Notes from './components/Notes'; // Komponen baru "Panduan Quality Assurance"
+import NotesBoard from './components/NotesBoard';
 import Chatbot from './components/Chatbot';
 
-// =========================================================
-// COMPONENT PANEL UTAMA INTEGRASI SIDEBAR PREMIUM FIGMA
-// =========================================================
-function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAddNote }) {
+// Layout Dashboard Utama
+function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAddNote, fetchData }) {
   return (
     <div className="min-h-screen bg-[#070b12] flex font-sans">
       
-      {/* 1. SIDEBAR KIRI (SINKRONISASI TAMPILAN FIGMA KAMU) */}
+      {/* Sidebar */}
       <aside className="w-64 border-r border-slate-900 bg-[#090f19] flex flex-col justify-between p-4 sticky top-0 h-screen z-40">
         <div className="space-y-8">
-          {/* Logo Brand Internal */}
+          {/* Logo Brand */}
           <div className="flex items-center gap-3 px-2 py-3 border-b border-slate-900">
             <div className="bg-cyan-600/10 p-2 rounded-xl border border-cyan-500/20 text-cyan-400">
               <Layers size={20} />
@@ -27,7 +25,7 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
             </div>
           </div>
 
-          {/* List Tombol Navigasi Menu */}
+          {/* Menu Navigasi */}
           <nav className="space-y-1">
             <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold bg-cyan-600/10 text-cyan-400 border border-cyan-500/10 text-left">
               <LayoutDashboard size={16} /> <span>Dashboard</span>
@@ -41,7 +39,7 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
           </nav>
         </div>
 
-        {/* Info Sesi Login Penguji di Bagian Bawah Sidebar */}
+        {/* Info Sesi Pengguna */}
         <div className="border-t border-slate-900 pt-4 space-y-3">
           <div className="flex items-center gap-3 p-2 bg-slate-950/60 border border-slate-900 rounded-xl">
             <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center text-slate-950 font-black text-xs uppercase">
@@ -59,9 +57,9 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
         </div>
       </aside>
 
-      {/* 2. AREA KONTEN UTAMA SEBELAH KANAN */}
+      {/* Konten Utama */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar Ringkas */}
+        {/* Topbar */}
         <header className="px-8 py-4 bg-[#070b12]/40 backdrop-blur-md border-b border-slate-900 flex justify-between items-center sticky top-0 z-30">
           <div className="text-xs text-slate-500 font-mono">QA Operations / <span className="text-slate-300">Dashboard</span></div>
           <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-full">
@@ -69,22 +67,20 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
           </div>
         </header>
 
-        {/* Grid Platform + Notes */}
+        {/* Dashboard Grid */}
         <main className="flex-1 p-8 space-y-12 max-w-6xl w-full mx-auto">
-          <PlatformGrid role={user.role} platforms={platforms} onAddPlatform={onAddPlatform} />
-          <Notes role={user.role} notes={notes} onAddNote={onAddNote} />
+          <PlatformGrid role={user.role} platforms={platforms} onAddPlatform={onAddPlatform} fetchData={fetchData} />
+          <NotesBoard role={user.role} notes={notes} onAddNote={onAddNote} fetchData={fetchData} />
         </main>
       </div>
 
-      {/* Widget Bantuan Chatbot */}
+      {/* Widget Chatbot */}
       <Chatbot />
     </div>
   );
 }
 
-// =========================================================
-// MAESTRO ROOT ROUTER UTAMA (ROUTING HANDLER)
-// =========================================================
+// Router Utama
 export default function App() {
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('kms_user_session');
@@ -105,7 +101,7 @@ export default function App() {
       const resNotes = await fetch('http://localhost:5000/api/kanban');
       setNotes(await resNotes.json());
     } catch (err) {
-      console.error("Gagal memuat data dari XAMPP:", err);
+      console.error("Gagal memuat data dari server:", err);
     }
   };
 
@@ -113,7 +109,7 @@ export default function App() {
     if (user) fetchData();
   }, [user]);
 
-  // Logika Login Gateway (Otomatis lompat rute ke /dashboard jika sukses)
+  // Login Handler
   const handleLoginSubmit = async (e, navigate) => {
     e.preventDefault();
     setError('');
@@ -125,14 +121,14 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        setUser(data.success ? data.user : null);
+        setUser(data.user);
         localStorage.setItem('kms_user_session', JSON.stringify(data.user));
-        navigate('/dashboard'); // ✨ URL BERUBAH KEREN DI SINI!
+        navigate('/dashboard'); 
       } else {
         setError(data.message);
       }
     } catch (err) {
-      setError('Server Backend mati. Nyalakan dengan perintah "node server.js"!');
+      setError('Koneksi ke server backend gagal. Harap pastikan server backend berjalan.');
     }
   };
 
@@ -157,12 +153,12 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* RUTE GERBANG DEPAN: / */}
+        {/* Halaman Login */}
         <Route path="/" element={
           user ? <Navigate to="/dashboard" replace /> : <LoginGatewayWrapper username={username} setUsername={setUsername} password={password} setPassword={setPassword} error={error} onLoginSubmit={handleLoginSubmit} />
         } />
 
-        {/* RUTE DALEM AMAN: /dashboard (URL Berubah Sesuai Maumu!) */}
+        {/* Halaman Dashboard */}
         <Route path="/dashboard" element={
           user ? (
             <DashboardLayout 
@@ -172,20 +168,21 @@ export default function App() {
               notes={notes} 
               onAddPlatform={handleAddPlatform} 
               onAddNote={handleAddNote} 
+              fetchData={fetchData}
             />
           ) : (
             <Navigate to="/" replace />
           )
         } />
 
-        {/* Jika ketik asal-asalan, lempar ke depan */}
+        {/* Fallback routing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
 }
 
-// Wrapper Pembantu untuk memicu fungsi hook useNavigate di halaman login
+// Wrapper Helper Login
 function LoginGatewayWrapper({ username, setUsername, password, setPassword, error, onLoginSubmit }) {
   const navigate = useNavigate();
   return (
