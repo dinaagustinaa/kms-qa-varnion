@@ -74,7 +74,7 @@ function DashboardLayout({ user, onLogout, platforms, notes, onAddPlatform, onAd
         </main>
       </div>
 
-      {/* Widget Chatbot */}
+      {/* Widget Asisten Virtual */}
       <Chatbot />
     </div>
   );

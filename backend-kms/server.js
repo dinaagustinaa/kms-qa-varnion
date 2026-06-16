@@ -172,7 +172,7 @@ app.put('/api/kanban/:id', verifikasiAdmin, (req, res) => {
     );
 });
 
-// API Chatbot
+// API Asisten Virtual
 app.get('/api/chat/:nodeId', (req, res) => {
     const { nodeId } = req.params;
     db.query('SELECT * FROM chat_nodes WHERE node_id = ?', [nodeId], (err, results) => {

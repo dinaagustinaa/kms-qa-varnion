@@ -31,7 +31,7 @@ export default function Chatbot() {
       {isOpen && (
         <div className="w-80 md:w-96 h-[400px] rounded-2xl bg-[#0b111e] border border-slate-800 shadow-2xl flex flex-col mb-3 overflow-hidden">
           <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-            <h3 className="text-xs font-black text-white flex items-center gap-2"><Bot size={14} className="text-cyan-400"/> QA Copilot Assistant</h3>
+            <h3 className="text-xs font-black text-white flex items-center gap-2"><Bot size={14} className="text-cyan-400"/> Asisten Virtual KMS</h3>
             <button onClick={() => setIsOpen(false)} className="text-xs text-slate-500 hover:text-white cursor-pointer">✕</button>
           </div>
           <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
