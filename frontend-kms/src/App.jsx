@@ -7,6 +7,7 @@ import NotesBoard from './components/NotesBoard';
 import Chatbot from './components/Chatbot';
 import KnowledgeBase from './components/KnowledgeBase';
 import Settings from './components/Settings';
+import Profile from './components/Profile';
 
 // Layout Dashboard Utama
 function DashboardLayout({ user, onLogout, platforms = [], notes = [], children }) {
@@ -19,6 +20,8 @@ function DashboardLayout({ user, onLogout, platforms = [], notes = [], children 
     ? 'knowledge' 
     : currentPath === '/settings' 
     ? 'settings' 
+    : currentPath === '/profile'
+    ? 'profile'
     : 'dashboard';
 
   return (
@@ -74,12 +77,16 @@ function DashboardLayout({ user, onLogout, platforms = [], notes = [], children 
 
         {/* Info Sesi Penguji */}
         <div className="border-t border-slate-900 pt-4 space-y-3">
-          <div className="flex items-center gap-3 p-2 bg-slate-950/60 border border-slate-900 rounded-xl">
-            <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center text-slate-950 font-black text-xs uppercase">
-              {user.username.substring(0, 2)}
+          <div 
+            onClick={() => navigate('/profile')}
+            className="flex items-center gap-3 p-2 bg-slate-950/60 border border-slate-900 rounded-xl cursor-pointer hover:bg-slate-900/60 hover:border-slate-800 transition-all animate-pulse-subtle"
+            title="Lihat Profil"
+          >
+            <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center text-slate-950 font-black text-xs uppercase shrink-0">
+              {(user.name || user.username).substring(0, 2)}
             </div>
             <div className="overflow-hidden">
-              <h4 className="text-xs font-black text-slate-200 truncate capitalize">{user.username}</h4>
+              <h4 className="text-xs font-black text-slate-200 truncate capitalize">{user.name || user.username}</h4>
               <p className="text-[10px] text-cyan-400 font-bold tracking-tight">{user.role === 'super_admin' ? 'Lead QA Engineer' : 'QA Engineer'}</p>
             </div>
           </div>
@@ -93,7 +100,15 @@ function DashboardLayout({ user, onLogout, platforms = [], notes = [], children 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="px-8 py-4 bg-[#070b12]/40 backdrop-blur-md border-b border-slate-900 flex justify-between items-center sticky top-0 z-30">
           <div className="text-xs text-slate-500 font-mono">
-            QA Operations / <span className="text-slate-300 capitalize">{activeTab === 'dashboard' ? 'Dashboard' : 'Knowledge Base'}</span>
+            QA Operations / <span className="text-slate-300 capitalize">
+              {activeTab === 'dashboard' 
+                ? 'Dashboard' 
+                : activeTab === 'knowledge' 
+                ? 'Knowledge Base' 
+                : activeTab === 'settings' 
+                ? 'Settings' 
+                : 'Profile'}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-full">
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> System Live - Synced
@@ -264,6 +279,24 @@ export default function App() {
           )
         } />
 
+        {/* Halaman Profile */}
+        <Route path="/profile" element={
+          user ? (
+            <ProfileWrapper 
+              user={user} 
+              onLogout={handleLogout} 
+              platforms={platforms}
+              notes={notes}
+              onUpdateSession={(updatedUser) => {
+                setUser(updatedUser);
+                localStorage.setItem('kms_user_session', JSON.stringify(updatedUser));
+              }}
+            />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } />
+
         {/* Fallback routing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -299,6 +332,15 @@ function SettingsWrapper({ user, onLogout, platforms, notes }) {
   return (
     <DashboardLayout user={user} onLogout={onLogout} platforms={platforms} notes={notes}>
       <Settings user={user} />
+    </DashboardLayout>
+  );
+}
+
+// Wrapper Helper Halaman Profile
+function ProfileWrapper({ user, onLogout, platforms, notes, onUpdateSession }) {
+  return (
+    <DashboardLayout user={user} onLogout={onLogout} platforms={platforms} notes={notes}>
+      <Profile user={user} onUpdateSession={onUpdateSession} />
     </DashboardLayout>
   );
 }

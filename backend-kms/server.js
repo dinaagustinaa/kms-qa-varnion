@@ -53,6 +53,43 @@ db.connect((err) => {
             });
         }
     });
+
+    // Cek dan tambahkan kolom 'name' dan 'email' di tabel users jika belum ada
+    db.query('SHOW COLUMNS FROM users', (err, cols) => {
+        if (err) {
+            console.error('Gagal mengecek struktur tabel users:', err);
+            return;
+        }
+        const fields = cols.map(c => c.Field);
+        
+        const queries = [];
+        if (!fields.includes('name')) {
+            queries.push("ALTER TABLE users ADD COLUMN name VARCHAR(100) DEFAULT NULL");
+        }
+        if (!fields.includes('email')) {
+            queries.push("ALTER TABLE users ADD COLUMN email VARCHAR(100) DEFAULT NULL");
+        }
+        
+        const executeQueries = (index) => {
+            if (index >= queries.length) {
+                // Setelah alter, pastikan data awal diisi jika null
+                db.query("UPDATE users SET name = 'Admin Varnion', email = 'admin@varnion.com' WHERE username = 'admin_varnion' AND (name IS NULL OR name = '')");
+                db.query("UPDATE users SET name = 'User Varnion', email = 'user@varnion.com' WHERE username = 'user_varnion' AND (name IS NULL OR name = '')");
+                console.log('Inisialisasi kolom tabel users selesai');
+                return;
+            }
+            db.query(queries[index], (err) => {
+                if (err) {
+                    console.error(`Gagal menjalankan query: ${queries[index]}`, err);
+                } else {
+                    console.log(`Berhasil menjalankan query: ${queries[index]}`);
+                }
+                executeQueries(index + 1);
+            });
+        };
+        
+        executeQueries(0);
+    });
 });
 
 // Middleware verifikasi role admin
@@ -71,7 +108,7 @@ const verifikasiAdmin = (req, res, next) => {
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     db.query(
-        'SELECT id, username, role FROM users WHERE username = ? AND password = ?', 
+        'SELECT id, username, name, email, role, created_at FROM users WHERE username = ? AND password = ?', 
         [username, password], 
         (err, results) => {
             if (err) return res.status(500).json(err);
@@ -86,11 +123,30 @@ app.post('/api/login', (req, res) => {
 
 // Tambah user baru
 app.post('/api/users', verifikasiAdmin, (req, res) => {
-    const { username, password, role } = req.body;
-    db.query('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', 
-    [username, password, role], (err, result) => {
+    const { username, password, role, name, email } = req.body;
+    db.query('INSERT INTO users (username, password, role, name, email) VALUES (?, ?, ?, ?, ?)', 
+    [username, password, role, name || null, email || null], (err, result) => {
         if (err) return res.status(500).json(err);
         res.json({ success: true, message: 'User baru berhasil didaftarkan.', id: result.insertId });
+    });
+});
+
+// Update profile user (name & email)
+app.put('/api/users/profile/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, email } = req.body;
+    db.query('UPDATE users SET name = ?, email = ? WHERE id = ?', [name, email, id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        
+        // Ambil data user yang diperbarui
+        db.query('SELECT id, username, name, email, role, created_at FROM users WHERE id = ?', [id], (err, results) => {
+            if (err) return res.status(500).json(err);
+            if (results.length > 0) {
+                res.json({ success: true, message: 'Profil Anda berhasil diperbarui.', user: results[0] });
+            } else {
+                res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
+            }
+        });
     });
 });
 

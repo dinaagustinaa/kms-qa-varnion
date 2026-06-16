@@ -14,7 +14,7 @@ export default function LoginCard({
             <ShieldCheck size={32} />
           </div>
           <h2 className="text-2xl font-black tracking-tight text-white">VARNION KMS QA</h2>
-          <p className="text-slate-400 text-xs mt-1">Knowledge Management System • Verification Gateway</p>
+          <p className="text-slate-400 text-xs mt-1">Knowledge Management System</p>
         </div>
 
         {error && (
@@ -50,7 +50,7 @@ export default function LoginCard({
           </div>
 
           <button type="submit" className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold rounded-xl text-sm tracking-wide transition-all mt-2 cursor-pointer">
-            Autentikasi Masuk
+            Login
           </button>
         </form>
       </div>

@@ -10,7 +10,7 @@ export default function Settings({ user }) {
   const [passwordStatus, setPasswordStatus] = useState({ success: '', error: '' });
 
   // State untuk Pusat Kendali Pengguna (Admin)
-  const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user_qa' });
+  const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user_qa', name: '', email: '' });
   const [userStatus, setUserStatus] = useState({ success: '', error: '' });
 
   // State untuk Reset Password Orang Lain (Admin)
@@ -65,7 +65,7 @@ export default function Settings({ user }) {
       const data = await res.json();
       if (data.success) {
         setUserStatus({ success: data.message, error: '' });
-        setUserForm({ username: '', password: '', role: 'user_qa' });
+        setUserForm({ username: '', password: '', role: 'user_qa', name: '', email: '' });
       } else {
         setUserStatus({ success: '', error: data.message });
       }
@@ -269,6 +269,30 @@ export default function Settings({ user }) {
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 text-[10px] font-bold uppercase mb-1.5">Nama Lengkap</label>
+                  <input
+                    type="text"
+                    required
+                    value={userForm.name}
+                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 placeholder-slate-600 transition-colors"
+                    placeholder="Contoh: Dina Agustina"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 text-[10px] font-bold uppercase mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 placeholder-slate-600 transition-colors"
+                    placeholder="dina@varnion.com"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-slate-400 text-[10px] font-bold uppercase mb-1.5">Username Penguji</label>
                   <input
