@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Layers, LogOut, LayoutDashboard, Settings, FolderKey } from 'lucide-react';
+import { Layers, LogOut, LayoutDashboard, Settings as SettingsIcon, FolderKey } from 'lucide-react';
 import LoginCard from './components/LoginCard';
 import PlatformGrid from './components/PlatformGrid';
 import NotesBoard from './components/NotesBoard';
 import Chatbot from './components/Chatbot';
 import KnowledgeBase from './components/KnowledgeBase';
+import Settings from './components/Settings';
 
 // Layout Dashboard Utama
 function DashboardLayout({ user, onLogout, children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const activeTab = currentPath === '/knowledge' ? 'knowledge' : 'dashboard';
+  
+  // Deteksi tab aktif berdasarkan path URL
+  const activeTab = currentPath === '/knowledge' 
+    ? 'knowledge' 
+    : currentPath === '/settings' 
+    ? 'settings' 
+    : 'dashboard';
 
   return (
     <div className="min-h-screen bg-[#070b12] flex font-sans">
@@ -52,8 +59,15 @@ function DashboardLayout({ user, onLogout, children }) {
               <FolderKey size={16} /> <span>Knowledge Base</span>
             </button>
 
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 text-left opacity-30 cursor-not-allowed">
-              <Settings size={16} /> <span>Settings</span>
+            <button 
+              onClick={() => navigate('/settings')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-left transition-colors cursor-pointer ${
+                activeTab === 'settings' 
+                  ? 'bg-cyan-600/10 text-cyan-400 border border-cyan-500/10' 
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+              }`}
+            >
+              <SettingsIcon size={16} /> <span>Settings</span>
             </button>
           </nav>
         </div>
@@ -92,7 +106,7 @@ function DashboardLayout({ user, onLogout, children }) {
         </main>
       </div>
 
-      <Chatbot />
+      <Chatbot user={user} />
     </div>
   );
 }
@@ -235,6 +249,18 @@ export default function App() {
           )
         } />
 
+        {/* Halaman Settings */}
+        <Route path="/settings" element={
+          user ? (
+            <SettingsWrapper 
+              user={user} 
+              onLogout={handleLogout} 
+            />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } />
+
         {/* Fallback routing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -261,6 +287,15 @@ function KnowledgeBaseWrapper({ user, onLogout, notes }) {
   return (
     <DashboardLayout user={user} onLogout={onLogout}>
       <KnowledgeBase notes={notes} onBackToDashboard={() => navigate('/dashboard')} />
+    </DashboardLayout>
+  );
+}
+
+// Wrapper Helper Halaman Settings
+function SettingsWrapper({ user, onLogout }) {
+  return (
+    <DashboardLayout user={user} onLogout={onLogout}>
+      <Settings user={user} />
     </DashboardLayout>
   );
 }

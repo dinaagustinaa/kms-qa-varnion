@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot } from 'lucide-react';
 
-export default function Chatbot() {
+export default function Chatbot({ user }) {
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState([]);
   const endRef = useRef(null);
 
   const loadNode = async (nodeId) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/chat/${nodeId}`);
+      let url = `http://localhost:5000/api/chat/${nodeId}`;
+      if (nodeId === 'start') {
+        const username = user?.username || '';
+        url += `?username=${encodeURIComponent(username)}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       setHistory(prev => [...prev, { sender: 'bot', text: data.text, options: data.options }]);
     } catch (err) {
