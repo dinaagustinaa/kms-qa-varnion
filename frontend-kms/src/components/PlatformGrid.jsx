@@ -18,9 +18,9 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
   const [isEditing, setIsEditing] = useState(false);
   
   // State penampung form pendaftaran platform baru
-  const [form, setForm] = useState({ name: '', url: '', status: 'Testing', testing_guide: '' });
+  const [form, setForm] = useState({ name: '', url: '', status: 'Idle', testing_guide: '' });
   // State penampung form pengeditan data terpilih
-  const [editForm, setEditForm] = useState({ name: '', url: '', status: 'Testing', testing_guide: '' });
+  const [editForm, setEditForm] = useState({ name: '', url: '', status: 'Idle', testing_guide: '' });
 
   // Saring platform berdasarkan kueri pencarian user (case-insensitive)
   const filtered = platforms.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -108,13 +108,13 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
         {filtered.map((plat) => (
           <div key={plat.id} className="glass-card p-5 rounded-2xl flex flex-col justify-between h-44 border border-slate-900">
             <div>
-              {/* Badge Status Staging (Stable vs Testing) */}
+              {/* Badge Status Staging (Active vs Idle) */}
               <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${
-                plat.status === 'Stable' 
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                (plat.status === 'Active' || plat.status === 'Stable') 
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
               }`}>
-                {plat.status}
+                {(plat.status === 'Active' || plat.status === 'Stable') ? 'Active' : 'Idle'}
               </span>
               <h3 className="text-sm font-black text-slate-100 mt-3">{plat.name}</h3>
             </div>
@@ -122,7 +122,12 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
             {/* Aksi footer kartu */}
             <div className="mt-5 pt-3 border-t border-slate-900/60 flex items-center justify-between text-[11px]">
               <button 
-                onClick={() => { setSelected(plat); setEditForm(plat); setIsEditing(false); }} 
+                onClick={() => { 
+                  const normPlat = { ...plat, status: (plat.status === 'Active' || plat.status === 'Stable') ? 'Active' : 'Idle' };
+                  setSelected(normPlat); 
+                  setEditForm(normPlat); 
+                  setIsEditing(false); 
+                }} 
                 className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
               >
                 <Eye size={12} /> <span>Detail</span>
@@ -183,8 +188,8 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
                   onChange={(e) => setEditForm({...editForm, status: e.target.value})} 
                   className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
                 >
-                  <option value="Testing">Testing</option>
-                  <option value="Stable">Stable</option>
+                  <option value="Idle">Idle</option>
+                  <option value="Active">Active</option>
                 </select>
                 
                 <textarea 
@@ -218,11 +223,11 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
                 <div className="border-b border-slate-850 pb-3 flex justify-between items-center">
                   <h3 className="text-md font-black text-white">{selected.name}</h3>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                    selected.status === 'Stable' 
-                      ? 'bg-emerald-500/10 text-emerald-400' 
-                      : 'bg-amber-500/10 text-amber-400'
+                    (selected.status === 'Active' || selected.status === 'Stable') 
+                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                      : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   }`}>
-                    {selected.status}
+                    {(selected.status === 'Active' || selected.status === 'Stable') ? 'Active' : 'Idle'}
                   </span>
                 </div>
                 
@@ -304,8 +309,8 @@ export default function PlatformGrid({ role, platforms, onAddPlatform, fetchData
               onChange={(e) => setForm({...form, status: e.target.value})} 
               className="w-full p-2 bg-slate-950 border border-slate-850 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
             >
-              <option value="Testing">Testing</option>
-              <option value="Stable">Stable</option>
+              <option value="Idle">Idle</option>
+              <option value="Active">Active</option>
             </select>
             
             <textarea 
